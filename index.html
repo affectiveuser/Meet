@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MobileVideoChat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: #fff;
+            min-height: 100vh;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+        
+        .header {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .video-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .local-video, .remote-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+        
+        .local-video {
+            position: absolute;
+            width: 30%;
+            height: 20%;
+            bottom: 10px;
+            right: 10px;
+            border: 2px solid white;
+            z-index: 2;
+        }
+        
+        .remote-video {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.local {
+            background-color: #6e8efb;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.remote {
+            background-color: #a777e3;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.system {
+            background-color: rgba(255, 255, 255, 0.2);
+            text-align: center;
+            margin: 5px auto;
+            font-size: 0.9em;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            margin-right: 10px;
+        }
+        
+        .chat-input button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 20px;
+            background-color: #6e8efb;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            gap: 20px;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn.mic.muted {
+            background-color: #ff4d4d;
+        }
+        
+        .control-btn.video.off {
+            background-color: #ff4d4d;
+        }
+        
+        .call-end {
+            background-color: #ff4d4d;
+        }
+        
+        .notification {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .connection-panel {
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .connection-panel input, .connection-panel button {
+            padding: 12px 15px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 20px;
+        }
+        
+        .connection-panel input {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .connection-panel button {
+            background-color: #6e8efb;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Адаптивность для очень маленьких экранов */
+        @media (max-height: 600px) {
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .header {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MobileVideoChat</h1>
+        </div>
+        
+        <div class="main">
+            <div class="video-container">
+                <video class="remote-video" id="remoteVideo" autoplay playsinline></video>
+                <video class="local-video" id="localVideo" autoplay muted playsinline></video>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        Добро пожаловать в чат! Подключитесь к собеседнику.
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение...">
+                    <button id="sendMessageBtn">Отпр.</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="connection-panel">
+            <input type="text" id="roomIdInput" placeholder="ID комнаты" value="room1">
+            <button id="createRoomBtn">Создать комнату</button>
+            <button id="joinRoomBtn">Присоединиться</button>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn mic" id="toggleMic">🎤</button>
+            <button class="control-btn video" id="toggleVideo">📹</button>
+            <button class="control-btn call-end" id="endCall">📞</button>
+        </div>
+        
+        <div class="notification" id="notification">
+            Сообщение отправлено
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы DOM
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const chatMessages = document.getElementById('chatMessages');
+            const messageInput = document.getElementById('messageInput');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const toggleMicBtn = document.getElementById('toggleMic');
+            const toggleVideoBtn = document.getElementById('toggleVideo');
+            const endCallBtn = document.getElementById('endCall');
+            const notification = document.getElementById('notification');
+            const roomIdInput = document.getElementById('roomIdInput');
+            const createRoomBtn = document.getElementById('createRoomBtn');
+            const joinRoomBtn = document.getElementById('joinRoomBtn');
+            
+            // Состояние приложения
+            let localStream = null;
+            let peerConnection = null;
+            let dataChannel = null;
+            let isMicOn = true;
+            let isVideoOn = true;
+            let roomId = null;
+            let isCallActive = false;
+            
+            // Конфигурация STUN/TURN серверов (используем публичные серверы)
+            const configuration = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            };
+            
+            // Инициализация приложения
+            init();
+            
+            function init() {
+                // Запрос доступа к камере и микрофону
+                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    .then(stream => {
+                        localStream = stream;
+                        localVideo.srcObject = stream;
+                        addMessage('system', 'Доступ к камере и микрофону получен. Создайте комнату или присоединитесь к существующей.');
+                    })
+                    .catch(error => {
+                        console.error('Ошибка доступа к медиаустройствам:', error);
+                        addMessage('system', 'Не удалось получить доступ к камере/микрофону. Проверьте разрешения.');
+                    });
+                
+                // Настройка обработчиков событий
+                setupEventListeners();
+            }
+            
+            function setupEventListeners() {
+                // Отправка сообщения
+                sendMessageBtn.addEventListener('click', sendMessage);
+                messageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+                
+                // Управление звонком
+                toggleMicBtn.addEventListener('click', toggleMic);
+                toggleVideoBtn.addEventListener('click', toggleVideo);
+                endCallBtn.addEventListener('click', endCall);
+                
+                // Работа с комнатами
+                createRoomBtn.addEventListener('click', createRoom);
+                joinRoomBtn.addEventListener('click', joinRoom);
+            }
+            
+            function createRoom() {
+                roomId = roomIdInput.value || generateRoomId();
+                roomIdInput.value = roomId;
+                addMessage('system', `Комната создана: ${roomId}. Сообщите этот ID собеседнику.`);
+                
+                // Инициализируем соединение
+                setupPeerConnection();
+                isCallActive = true;
+                
+                // Создаем предложение (offer)
+                peerConnection.createOffer()
+                    .then(offer => peerConnection.setLocalDescription(offer))
+                    .then(() => {
+                        // В реальном приложении здесь бы отправлялось предложение через сервер
+                        // Для демонстрации просто выводим в консоль
+                        console.log('Предложение создано:', peerConnection.localDescription);
+                        addMessage('system', 'Предложение создано. Попросите собеседника присоединиться с тем же ID комнаты.');
+                    })
+                    .catch(error => {
+                        console.error('Ошибка создания предложения:', error);
+                    });
+            }
+            
+            function joinRoom() {
+                roomId = roomIdInput.value;
+                if (!roomId) {
+                    addMessage('system', 'Введите ID комнаты для подключения.');
+                    return;
+                }
+                
+                addMessage('system', `Подключение к комнате: ${roomId}...`);
+                
+                // Инициализируем соединение
+                setupPeerConnection();
+                isCallActive = true;
+                
+                // В реальном приложении здесь бы запрашивалось предложение от создателя комнаты
+                // Для демонстрации просим пользователя вручную обменяться SDP данными
+                addMessage('system', 'Запросите SDP предложение у создателя комнаты и введите его в консоли: peerConnection.setRemoteDescription(offer)');
+            }
+            
+            function setupPeerConnection() {
+                // Создаем peer connection
+                peerConnection = new RTCPeerConnection(configuration);
+                
+                // Добавляем локальный поток
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                // Получаем удаленный поток
+                peerConnection.ontrack = event => {
+                    remoteVideo.srcObject = event.streams[0];
+                    addMessage('system', 'Соединение установлено!');
+                };
+                
+                // Создаем канал для обмена сообщениями
+                dataChannel = peerConnection.createDataChannel('chat');
+                setupDataChannel();
+                
+                // Обработка ICE кандидатов
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        // В реальном приложении здесь бы отправлялся кандидат через сервер
+                        console.log('ICE кандидат:', event.candidate);
+                    }
+                };
+                
+                // Обработка получения канала данных (для присоединившейся стороны)
+                peerConnection.ondatachannel = event => {
+                    dataChannel = event.channel;
+                    setupDataChannel();
+                };
+            }
+            
+            function setupDataChannel() {
+                dataChannel.onopen = () => {
+                    addMessage('system', 'Канал чата готов к обмену сообщениями.');
+                };
+                
+                dataChannel.onmessage = event => {
+                    addMessage('remote', event.data);
+                };
+            }
+            
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message && dataChannel && dataChannel.readyState === 'open') {
+                    dataChannel.send(message);
+                    addMessage('local', message);
+                    messageInput.value = '';
+                } else if (message) {
+                    addMessage('system', 'Канал чата не готов. Дождитесь установления соединения.');
+                }
+            }
+            
+            function addMessage(type, text) {
+                const messageEl = document.createElement('div');
+                messageEl.classList.add('message', type);
+                messageEl.textContent = text;
+                chatMessages.appendChild(messageEl);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function toggleMic() {
+                if (localStream) {
+                    const audioTracks = localStream.getAudioTracks();
+                    audioTracks.forEach(track => {
+                        track.enabled = !track.enabled;
+                    });
+                    isMicOn = !isMicOn;
+                    toggleMicBtn.classList.toggle('muted', !isMicOn);
+                    showNotification(isMicOn ? 'Микрофон включен' : 'Микрофон выключен');
+                }
+            }
+            
+            function toggleVideo() {
+                if (localStream) {
+                    const videoTracks = localStream.getVideoTracks();
+                    videoTracks.forEach(track => {
+                        track.enabled = !track.enabled;
+                    });
+                    isVideoOn = !isVideoOn;
+                    toggleVideoBtn.classList.toggle('off', !isVideoOn);
+                    localVideo.style.display = isVideoOn ? 'block' : 'none';
+                    showNotification(isVideoOn ? 'Камера включена' : 'Камера выключена');
+                }
+            }
+            
+            function endCall() {
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                }
+                
+                if (peerConnection) {
+                    peerConnection.close();
+                }
+                
+                localVideo.srcObject = null;
+                remoteVideo.srcObject = null;
+                
+                addMessage('system', 'Звонок завершен');
+                showNotification('Звонок завершен');
+                
+                // Сбрасываем состояние
+                peerConnection = null;
+                dataChannel = null;
+                isCallActive = false;
+            }
+            
+            function showNotification(text) {
+                notification.textContent = text;
+                notification.style.display = 'block';
+                
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 2000);
+            }
+            
+            function generateRoomId() {
+                return Math.random().toString(36).substring(2, 10);
+            }
+            
+            // Функции для отладки (в реальном приложении не нужны)
+            window.setRemoteDescription = function(description) {
+                if (peerConnection) {
+                    peerConnection.setRemoteDescription(description)
+                        .then(() => {
+                            if (description.type === 'offer') {
+                                return peerConnection.createAnswer()
+                                    .then(answer => peerConnection.setLocalDescription(answer));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка установки удаленного описания:', error);
+                        });
+                }
+            };
+            
+            window.addIceCandidate = function(candidate) {
+                if (peerConnection) {
+                    peerConnection.addIceCandidate(candidate)
+                        .catch(error => {
+                            console.error('Ошибка добавления ICE кандидата:', error);
+                        });
+                }
+            };
+        });
+    </script>
+</body>
+</html>
